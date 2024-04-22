@@ -119,6 +119,7 @@ export interface ICompleteTextAreaWrapper extends ITextAreaWrapper {
 	resetSelectionChangeTime(): void;
 
 	hasFocus(): boolean;
+	focus(): void;
 }
 
 export interface IBrowser {
@@ -584,12 +585,17 @@ export class TextAreaInput extends Disposable {
 	}
 
 	public focusTextArea(): void {
-		// Setting this._hasFocus and writing the screen reader content
-		// will result in a focus() and setSelectionRange() in the textarea
-		this._setHasFocus(true);
-
-		// If the editor is off DOM, focus cannot be really set, so let's double check that we have managed to set the focus
-		this.refreshFocusState();
+		// `this._setHasFocus()` is called from our `onFocus()` handler if the
+		// focus call below is successful. It will not be if the editor is
+		// off-DOM or if the OS-level window in the background. In the latter
+		// case, the editor should still have become the active element and
+		// focus will fire once the window is on the foreground again.
+		//
+		// Note that we really do need to call `_textArea.focus()` instead of
+		// `_setHasFocus()` as we did before. The latter uses
+		// `writeNativeTextAreaContent()` but this doesn't work when the
+		// application is in the background.
+		this._textArea.focus();
 	}
 
 	public isFocused(): boolean {
@@ -750,6 +756,10 @@ export class TextAreaWrapper extends Disposable implements ICompleteTextAreaWrap
 		} else {
 			return false;
 		}
+	}
+
+	public focus(): void {
+		this._actual.focus();
 	}
 
 	public setIgnoreSelectionChangeTime(reason: string): void {
